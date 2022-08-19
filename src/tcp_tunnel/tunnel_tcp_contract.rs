@@ -26,6 +26,29 @@ pub enum TunnelTcpContract {
 }
 
 impl TunnelTcpContract {
+    pub fn get_packet_name(&self) -> String {
+        match self {
+            TunnelTcpContract::Ping => "Ping".to_string(),
+            TunnelTcpContract::Pong => "Pong".to_string(),
+            TunnelTcpContract::ConnectTo { id, url } => format!("ConnectTo: {}/{}", id, url),
+            TunnelTcpContract::Connected(id) => format!("Connected:{}", id),
+            TunnelTcpContract::CanNotConnect { id, reason } => {
+                format!("CanNptConnect:{}. Reason:{}", id, reason)
+            }
+            TunnelTcpContract::DisconnectedFromSideA(id) => {
+                format!("Disconnected from side A {}", id)
+            }
+            TunnelTcpContract::DisconnectedFromSideB(id) => {
+                format!("Disconnected from side B {}", id)
+            }
+            TunnelTcpContract::Payload { id, payload } => {
+                format!("Payload from id {} with len:{}", id, payload.len())
+            }
+            TunnelTcpContract::Greeting(name) => {
+                format!("Greeting from {}", name)
+            }
+        }
+    }
     pub fn serialize(&self) -> Vec<u8> {
         match self {
             TunnelTcpContract::Ping => {
