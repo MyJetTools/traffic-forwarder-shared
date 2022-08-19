@@ -8,9 +8,10 @@ const PONG_PACKET: u8 = 1;
 const CONNECT_PACKET: u8 = 2;
 const CONNECTED_PACKET: u8 = 3;
 const CAN_NOT_CONNECT_PACKET: u8 = 4;
-const DISCONNECTED_PACKET: u8 = 5;
-const PAYLOAD: u8 = 6;
-const GREETING: u8 = 7;
+const DISCONNECTED_A_PACKET: u8 = 5;
+const DISCONNECTED_B_PACKET: u8 = 6;
+const PAYLOAD: u8 = 7;
+const GREETING: u8 = 8;
 
 pub enum TunnelTcpContract {
     Ping,
@@ -18,7 +19,8 @@ pub enum TunnelTcpContract {
     ConnectTo { id: u32, url: String },
     Connected(u32),
     CanNotConnect { id: u32, reason: String },
-    Disconnected(u32),
+    DisconnectedFromSideA(u32),
+    DisconnectedFromSideB(u32),
     Payload { id: u32, payload: Vec<u8> },
     Greeting(String),
 }
@@ -56,9 +58,15 @@ impl TunnelTcpContract {
                 crate::common_serializers::serialize_pascal_string(&mut result, reason);
                 result
             }
-            TunnelTcpContract::Disconnected(id) => {
+            TunnelTcpContract::DisconnectedFromSideA(id) => {
                 let mut result = Vec::with_capacity(5);
-                result.push(DISCONNECTED_PACKET);
+                result.push(DISCONNECTED_A_PACKET);
+                crate::common_serializers::serialize_u32(&mut result, *id);
+                result
+            }
+            TunnelTcpContract::DisconnectedFromSideB(id) => {
+                let mut result = Vec::with_capacity(5);
+                result.push(DISCONNECTED_B_PACKET);
                 crate::common_serializers::serialize_u32(&mut result, *id);
                 result
             }
@@ -102,9 +110,13 @@ impl TunnelTcpContract {
                 let reason = crate::common_deserializers::read_pascal_string(socket_reader).await?;
                 Ok(Self::CanNotConnect { id, reason })
             }
-            DISCONNECTED_PACKET => {
+            DISCONNECTED_A_PACKET => {
                 let id = socket_reader.read_u32().await?;
-                Ok(Self::Disconnected(id))
+                Ok(Self::DisconnectedFromSideA(id))
+            }
+            DISCONNECTED_B_PACKET => {
+                let id = socket_reader.read_u32().await?;
+                Ok(Self::DisconnectedFromSideB(id))
             }
             PAYLOAD => {
                 let id = socket_reader.read_u32().await?;
