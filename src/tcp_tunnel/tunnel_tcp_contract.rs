@@ -3,6 +3,8 @@ use my_tcp_sockets::{
     tcp_connection::TcpContract,
 };
 
+use crate::common_deserializers;
+
 const PING_PACKET: u8 = 0;
 const PONG_PACKET: u8 = 1;
 const CONNECT_PACKET: u8 = 2;
@@ -97,7 +99,7 @@ impl TunnelTcpContract {
                 let mut result = Vec::with_capacity(5 + payload.len());
                 result.push(PAYLOAD);
                 crate::common_serializers::serialize_u32(&mut result, *id);
-                result.extend_from_slice(payload);
+                crate::common_serializers::serialize_payload(&mut result, payload);
                 result
             }
 
@@ -143,7 +145,7 @@ impl TunnelTcpContract {
             }
             PAYLOAD => {
                 let id = socket_reader.read_u32().await?;
-                let payload = socket_reader.read_byte_array().await?;
+                let payload = common_deserializers::read_payload(socket_reader).await?;
                 Ok(Self::Payload { id, payload })
             }
             GREETING => {
@@ -233,6 +235,43 @@ mod tests {
         if let TunnelTcpContract::CanNotConnect { id, reason } = result {
             assert_eq!(id, 10);
             assert_eq!(reason, "Reason");
+        } else {
+            panic!("Invalid contract");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_connect_and_ping() {
+        let connect = TunnelTcpContract::ConnectTo {
+            id: 5,
+            url: "test:8080".to_string(),
+        };
+
+        let mut payload = connect.serialize();
+
+        let ping = TunnelTcpContract::Ping;
+
+        let ping_paylod = ping.serialize();
+        payload.extend_from_slice(&ping_paylod);
+
+        let mut socket_reader = SocketReaderInMem::new(payload);
+
+        let result = TunnelTcpContract::deserialize(&mut socket_reader)
+            .await
+            .unwrap();
+
+        if let TunnelTcpContract::ConnectTo { id, url } = result {
+            assert_eq!(id, 5);
+            assert_eq!(url, "test:8080");
+        } else {
+            panic!("Invalid contract");
+        }
+
+        let result = TunnelTcpContract::deserialize(&mut socket_reader)
+            .await
+            .unwrap();
+
+        if let TunnelTcpContract::Ping = result {
         } else {
             panic!("Invalid contract");
         }

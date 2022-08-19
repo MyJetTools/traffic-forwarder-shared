@@ -12,3 +12,16 @@ pub async fn read_pascal_string<TSocketReader: SocketReader>(
 
     Ok(String::from_utf8(result)?)
 }
+
+pub async fn read_payload<TSocketReader: SocketReader>(
+    reader: &mut TSocketReader,
+) -> Result<Vec<u8>, ReadingTcpContractFail> {
+    let size = reader.read_u32().await? as usize;
+
+    let mut result: Vec<u8> = Vec::with_capacity(size);
+    unsafe { result.set_len(size) }
+
+    reader.read_buf(&mut result).await?;
+
+    Ok(result)
+}
