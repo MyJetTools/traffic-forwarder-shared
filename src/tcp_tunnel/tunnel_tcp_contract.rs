@@ -18,7 +18,7 @@ const GREETING: u8 = 8;
 pub enum TunnelTcpContract {
     Ping,
     Pong,
-    ConnectTo { id: u32, url: String },
+    ConnectTo { id: u32, remote_host_port: String },
     Connected(u32),
     CanNotConnect { id: u32, reason: String },
     DisconnectedFromSideA(u32),
@@ -32,7 +32,10 @@ impl TunnelTcpContract {
         match self {
             TunnelTcpContract::Ping => "Ping".to_string(),
             TunnelTcpContract::Pong => "Pong".to_string(),
-            TunnelTcpContract::ConnectTo { id, url } => format!("ConnectTo: {}/{}", id, url),
+            TunnelTcpContract::ConnectTo {
+                id,
+                remote_host_port,
+            } => format!("ConnectTo: {}/{}", id, remote_host_port),
             TunnelTcpContract::Connected(id) => format!("Connected:{}", id),
             TunnelTcpContract::CanNotConnect { id, reason } => {
                 format!("CanNptConnect:{}. Reason:{}", id, reason)
@@ -63,11 +66,14 @@ impl TunnelTcpContract {
                 data.push(PONG_PACKET);
                 data
             }
-            TunnelTcpContract::ConnectTo { id, url } => {
+            TunnelTcpContract::ConnectTo {
+                id,
+                remote_host_port,
+            } => {
                 let mut result = Vec::with_capacity(264);
                 result.push(CONNECT_PACKET);
                 crate::common_serializers::serialize_u32(&mut result, *id);
-                crate::common_serializers::serialize_pascal_string(&mut result, url);
+                crate::common_serializers::serialize_pascal_string(&mut result, remote_host_port);
                 result
             }
             TunnelTcpContract::Connected(id) => {
@@ -123,8 +129,12 @@ impl TunnelTcpContract {
             PONG_PACKET => Ok(Self::Pong),
             CONNECT_PACKET => {
                 let id = socket_reader.read_u32().await?;
-                let url = crate::common_deserializers::read_pascal_string(socket_reader).await?;
-                Ok(Self::ConnectTo { id, url })
+                let remote_host_port =
+                    crate::common_deserializers::read_pascal_string(socket_reader).await?;
+                Ok(Self::ConnectTo {
+                    id,
+                    remote_host_port,
+                })
             }
             CONNECTED_PACKET => {
                 let connection_id = socket_reader.read_u32().await?;
@@ -179,7 +189,7 @@ mod tests {
     async fn test_connect() {
         let connect = TunnelTcpContract::ConnectTo {
             id: 5,
-            url: "test:8080".to_string(),
+            remote_host_port: "test:8080".to_string(),
         };
 
         let payload = connect.serialize();
@@ -190,9 +200,13 @@ mod tests {
             .await
             .unwrap();
 
-        if let TunnelTcpContract::ConnectTo { id, url } = result {
+        if let TunnelTcpContract::ConnectTo {
+            id,
+            remote_host_port,
+        } = result
+        {
             assert_eq!(id, 5);
-            assert_eq!(url, "test:8080");
+            assert_eq!(remote_host_port, "test:8080");
         } else {
             panic!("Invalid contract");
         }
@@ -244,7 +258,7 @@ mod tests {
     async fn test_connect_and_ping() {
         let connect = TunnelTcpContract::ConnectTo {
             id: 5,
-            url: "test:8080".to_string(),
+            remote_host_port: "test:8080".to_string(),
         };
 
         let mut payload = connect.serialize();
@@ -260,9 +274,13 @@ mod tests {
             .await
             .unwrap();
 
-        if let TunnelTcpContract::ConnectTo { id, url } = result {
+        if let TunnelTcpContract::ConnectTo {
+            id,
+            remote_host_port,
+        } = result
+        {
             assert_eq!(id, 5);
-            assert_eq!(url, "test:8080");
+            assert_eq!(remote_host_port, "test:8080");
         } else {
             panic!("Invalid contract");
         }
