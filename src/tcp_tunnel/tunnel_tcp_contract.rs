@@ -160,4 +160,46 @@ mod tests {
             panic!("Invalid contract");
         }
     }
+
+    #[tokio::test]
+    async fn test_connected() {
+        let connect = TunnelTcpContract::Connected(6);
+
+        let payload = connect.serialize();
+
+        let mut socket_reader = SocketReaderInMem::new(payload);
+
+        let result = TunnelTcpContract::deserialize(&mut socket_reader)
+            .await
+            .unwrap();
+
+        if let TunnelTcpContract::Connected(result) = result {
+            assert_eq!(result, 6);
+        } else {
+            panic!("Invalid contract");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_can_no_connect() {
+        let connect = TunnelTcpContract::CanNotConnect {
+            id: 10,
+            reason: "Reason".to_string(),
+        };
+
+        let payload = connect.serialize();
+
+        let mut socket_reader = SocketReaderInMem::new(payload);
+
+        let result = TunnelTcpContract::deserialize(&mut socket_reader)
+            .await
+            .unwrap();
+
+        if let TunnelTcpContract::CanNotConnect { id, reason } = result {
+            assert_eq!(id, 10);
+            assert_eq!(reason, "Reason");
+        } else {
+            panic!("Invalid contract");
+        }
+    }
 }
