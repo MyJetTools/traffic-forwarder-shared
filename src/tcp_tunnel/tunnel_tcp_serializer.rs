@@ -18,9 +18,6 @@ impl TcpSocketSerializer<TunnelTcpContract> for TunnelTcpSerializer {
     fn serialize(&self, contract: TunnelTcpContract) -> Vec<u8> {
         contract.serialize()
     }
-    fn serialize_ref(&self, contract: &TunnelTcpContract) -> Vec<u8> {
-        contract.serialize()
-    }
 
     fn get_ping(&self) -> TunnelTcpContract {
         TunnelTcpContract::Ping
@@ -30,9 +27,5 @@ impl TcpSocketSerializer<TunnelTcpContract> for TunnelTcpSerializer {
         socket_reader: &mut TSocketReader,
     ) -> Result<TunnelTcpContract, ReadingTcpContractFail> {
         TunnelTcpContract::deserialize(socket_reader).await
-    }
-
-    fn apply_packet(&mut self, _contract: &TunnelTcpContract) -> bool {
-        true
     }
 }
